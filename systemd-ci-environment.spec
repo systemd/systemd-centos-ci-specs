@@ -1,12 +1,12 @@
 Name:      systemd-ci-environment
 Version:   0
-Release:   2%{?dist}
+Release:   3%{?dist}
 Summary:   Metapackage for systemd CI
 
 Group:     Development/System
 License:   GPLv2+
 
-Requires:  util-linux >= 2.27.1
+Requires:  util-linux >= 2.32
 Requires:  libcap-devel
 Requires:  libmount-devel
 Requires:  pam-devel
@@ -56,6 +56,9 @@ for building upstream systemd on top of el7.
 %files
 
 %changelog
+* Tue Oct 16 2018 Frantisek Sumsal <fsumsal@redhat.com> - 0-3
+- bump util-linux version
+
 * Thu Feb 18 2016 Lukáš Nykrýn <lnykryn@redhat.com> - 0-2
 - bump libcurl version
 
