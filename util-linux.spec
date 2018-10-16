@@ -420,6 +420,17 @@ find  $RPM_BUILD_ROOT%{_mandir}/man8 -regextype posix-egrep  \
 	-regex ".*(linux32|linux64|s390|s390x|i386|ppc|ppc64|ppc32|sparc|sparc64|sparc32|sparc32bash|mips|mips64|mips32|ia64|x86_64|uname26)\.8.*" \
 	-printf "%{_mandir}/man8/%f*\n" >> %{name}.files
 
+# Temporary workaround for conflicts with sysvinit-tools
+ rm -fv ${RPM_BUILD_ROOT}%{_bindir}/last
+ rm -fv ${RPM_BUILD_ROOT}%{_bindir}/mesg
+ rm -fv ${RPM_BUILD_ROOT}%{_bindir}/wall
+ rm -fv ${RPM_BUILD_ROOT}%{compldir}/last
+ rm -fv ${RPM_BUILD_ROOT}%{compldir}/mesg
+ rm -fv ${RPM_BUILD_ROOT}%{compldir}/wall
+ rm -fv ${RPM_BUILD_ROOT}%{_mandir}/man1/last.1*
+ rm -fv ${RPM_BUILD_ROOT}%{_mandir}/man1/mesg.1*
+ rm -fv ${RPM_BUILD_ROOT}%{_mandir}/man1/wall.1*
+
 %post
 # only for minimal buildroots without /var/log
 [ -d /var/log ] || mkdir -p /var/log
@@ -534,7 +545,7 @@ exit 0
 %{_bindir}/ipcs
 %{_bindir}/isosize
 %{_bindir}/kill
-%{_bindir}/last
+#%%{_bindir}/last
 %{_bindir}/lastb
 %{_bindir}/logger
 %{_bindir}/look
@@ -546,7 +557,7 @@ exit 0
 %{_bindir}/lsmem
 %{_bindir}/lsns
 %{_bindir}/mcookie
-%{_bindir}/mesg
+#%%{_bindir}/mesg
 %{_bindir}/more
 %{_bindir}/mountpoint
 %{_bindir}/namei
@@ -568,7 +579,7 @@ exit 0
 %{_bindir}/utmpdump
 %{_bindir}/uuidgen
 %{_bindir}/uuidparse
-%{_bindir}/wall
+#%%{_bindir}/wall
 %{_bindir}/wdctl
 %{_bindir}/whereis
 %{_mandir}/man1/cal.1*
@@ -589,7 +600,7 @@ exit 0
 %{_mandir}/man1/ipcrm.1*
 %{_mandir}/man1/ipcs.1*
 %{_mandir}/man1/kill.1*
-%{_mandir}/man1/last.1*
+#%%{_mandir}/man1/last.1*
 %{_mandir}/man1/lastb.1*
 %{_mandir}/man1/logger.1*
 %{_mandir}/man1/login.1*
@@ -599,7 +610,7 @@ exit 0
 %{_mandir}/man1/lslogins.1*
 %{_mandir}/man1/lsmem.1*
 %{_mandir}/man1/mcookie.1*
-%{_mandir}/man1/mesg.1*
+#%%{_mandir}/man1/mesg.1*
 %{_mandir}/man1/more.1*
 %{_mandir}/man1/mountpoint.1*
 %{_mandir}/man1/namei.1*
@@ -621,7 +632,7 @@ exit 0
 %{_mandir}/man1/utmpdump.1.gz
 %{_mandir}/man1/uuidgen.1*
 %{_mandir}/man1/uuidparse.1*
-%{_mandir}/man1/wall.1*
+#%%{_mandir}/man1/wall.1*
 %{_mandir}/man1/whereis.1*
 %{_mandir}/man1/write.1*
 %{_mandir}/man5/fstab.5*
@@ -747,7 +758,7 @@ exit 0
 %{compldir}/ipcrm
 %{compldir}/ipcs
 %{compldir}/isosize
-%{compldir}/last
+#%%{compldir}/last
 %{compldir}/ldattach
 %{compldir}/logger
 %{compldir}/look
@@ -760,7 +771,7 @@ exit 0
 %{compldir}/lsmem
 %{compldir}/lsns
 %{compldir}/mcookie
-%{compldir}/mesg
+#%%{compldir}/mesg
 %{compldir}/mkfs
 %{compldir}/mkfs.cramfs
 %{compldir}/mkfs.minix
@@ -797,7 +808,7 @@ exit 0
 %{compldir}/utmpdump
 %{compldir}/uuidgen
 %{compldir}/uuidparse
-%{compldir}/wall
+#%%{compldir}/wall
 %{compldir}/wdctl
 %{compldir}/whereis
 %{compldir}/wipefs
