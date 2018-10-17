@@ -1,33 +1,55 @@
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
-Version: 7.59.0
-Release: 7%{?dist}
+Version: 7.53.1
+Release: 15%{?dist}
 License: MIT
-Source: https://curl.haxx.se/download/%{name}-%{version}.tar.xz
+Group: Applications/Internet
+Source: https://curl.haxx.se/download/%{name}-%{version}.tar.lzma
 
-# ftp: fix typo in recursive callback detection for seeking
-Patch1:   0001-curl-7.58.0-ftp-typo-in-recursive-callback-detection.patch
+# fix out of bounds read in curl --write-out (CVE-2017-7407)
+Patch1:   0001-curl-7.53.1-CVE-2017-7407.patch
 
-# fix RTSP bad headers buffer over-read (CVE-2018-1000301)
-Patch2:   0002-curl-7.59.0-CVE-2018-1000301.patch
+# fix switching off SSL session id when client cert is used (CVE-2017-7468)
+Patch2:   0002-curl-7.53.1-CVE-2017-7468.patch
 
-# fix FTP shutdown response buffer overflow (CVE-2018-1000300)
-Patch3:   0003-curl-7.59.0-CVE-2018-1000300.patch
+# nss: do not leak PKCS #11 slot while loading a key (#1444860)
+Patch3:   0003-curl-7.53.1-nss-pem-slot-leak.patch
 
-# http2: handle GOAWAY properly (#1585797)
-Patch4:   0004-curl-7.59.0-http2-GOAWAY.patch
+# nss: use libnssckbi.so as the default source of trust
+Patch4:   0004-curl-7.53.1-libnssckbi.patch
 
-# fix heap buffer overflow in SMTP send (CVE-2018-0500)
-Patch5:   0005-curl-7.59.0-CVE-2018-0500.patch
+# fix out of bounds read in FTP PWD response parser (CVE-2017-1000254)
+Patch5:   0005-curl-7.53.1-CVE-2017-1000254.patch
 
-# ssl: set engine implicitly when a PKCS#11 URI is provided (#1219544)
-Patch6:   0006-curl-7.59.0-pkcs11.patch
+# fix buffer overflow while processing IMAP FETCH response (CVE-2017-1000257)
+Patch6:   0006-curl-7.53.1-CVE-2017-1000257.patch
 
-# scp/sftp: fix infinite connect loop on invalid private key (#1595135)
-Patch7:   0007-curl-7.61.0-libssh.patch
+# nss: fix a possible use-after-free in SelectClientCert() (#1436158)
+Patch7:   0007-curl-7.54.1-nss-cc-use-after-free.patch
 
-# fix NTLM password overflow via integer overflow (CVE-2018-14618)
-Patch8:   0008-curl-7.59.0-CVE-2018-14618.patch
+# ignore Content-Length/Transfer-Encoding headers in CONNECT response (#1476427)
+Patch8:   0008-curl-7.53.1-connect-response-headers.patch
+
+# do not continue parsing of glob after range overflow (CVE-2017-1000101)
+Patch9:   0009-curl-7.54.1-CVE-2017-1000101.patch
+
+# tftp: reject file name lengths that do not fit buffer (CVE-2017-1000100)
+Patch10:  0010-curl-7.54.1-CVE-2017-1000100.patch
+
+# fix FTP wildcard out of bounds read (CVE-2017-8817)
+Patch11:  0011-curl-7.53.1-CVE-2017-8817.patch
+
+# fix NTLM buffer overflow via integer overflow (CVE-2017-8816)
+Patch12:  0012-curl-7.53.1-CVE-2017-8816.patch
+
+# http: prevent custom Authorization headers in redirects (CVE-2018-1000007)
+Patch13:  0013-curl-7.53.1-CVE-2018-1000007.patch
+
+# http2: fix incorrect trailer buffer size (CVE-2018-1000005)
+Patch14:  0014-curl-7.53.1-CVE-2018-1000005.patch
+
+# make NSS deallocate PKCS #11 objects early enough (#1510247)
+Patch15:  0015-curl-7.53.1-nss-obj-leak.patch
 
 # patch making libcurl multilib ready
 Patch101: 0101-curl-7.32.0-multilib.patch
@@ -38,36 +60,26 @@ Patch102: 0102-curl-7.36.0-debug.patch
 # use localhost6 instead of ip6-localhost in the curl test-suite
 Patch104: 0104-curl-7.19.7-localhost6.patch
 
-# tests: make ssh-keygen always produce PEM format (#1622594)
-Patch105: 0105-curl-7.61.0-tests-ssh-keygen.patch
-
-Provides: curl-full = %{version}-%{release}
 Provides: webclient
 URL: https://curl.haxx.se/
-
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(id -nu)
 BuildRequires: automake
-BuildRequires: coreutils
-BuildRequires: gcc
 BuildRequires: groff
 BuildRequires: krb5-devel
 BuildRequires: libidn2-devel
 BuildRequires: libmetalink-devel
 BuildRequires: libnghttp2-devel
 BuildRequires: libpsl-devel
-BuildRequires: libssh-devel
-BuildRequires: make
+BuildRequires: libssh2-devel
+BuildRequires: multilib-rpm-config
+BuildRequires: nss-devel
 BuildRequires: openldap-devel
 BuildRequires: openssh-clients
 BuildRequires: openssh-server
-BuildRequires: openssl-devel
 BuildRequires: pkgconfig
 BuildRequires: python
-BuildRequires: sed
 BuildRequires: stunnel
 BuildRequires: zlib-devel
-
-# gnutls-serv is used by the upstream test-suite
-BuildRequires: gnutls-utils
 
 # nghttpx (an HTTP/2 proxy) is used by the upstream test-suite
 BuildRequires: nghttp2
@@ -87,26 +99,21 @@ BuildRequires: perl(Time::HiRes)
 BuildRequires: perl(warnings)
 BuildRequires: perl(vars)
 
-# The test-suite runs automatically through valgrind if valgrind is available
+# The test-suite runs automatically trough valgrind if valgrind is available
 # on the system.  By not installing valgrind into mock's chroot, we disable
 # this feature for production builds on architectures where valgrind is known
 # to be less reliable, in order to avoid unnecessary build failures (see RHBZ
 # #810992, #816175, and #886891).  Nevertheless developers are free to install
 # valgrind manually to improve test coverage on any architecture.
-%ifarch x86_64 %{ix86}
+%ifarch x86_64
 BuildRequires: valgrind
 %endif
 
-# using an older version of libcurl could result in CURLE_UNKNOWN_OPTION
-Requires: libcurl%{?_isa} >= %{version}-%{release}
+Requires: libcurl%{?_isa} = %{version}-%{release}
 
-# require at least the version of libssh that we were built against,
+# require at least the version of libssh2 that we were built against,
 # to ensure that we have the necessary symbols available (#525002, #642796)
-%global libssh_version %(pkg-config --modversion libssh 2>/dev/null || echo 0)
-
-# require at least the version of openssl-libs that we were built against,
-# to ensure that we have the necessary symbols available (#1462184, #1462211)
-%global openssl_version %(pkg-config --modversion openssl 2>/dev/null || echo 0)
+%global libssh2_version %(pkg-config --modversion libssh2 2>/dev/null || echo 0)
 
 %description
 curl is a command line tool for transferring data with URL syntax, supporting
@@ -118,10 +125,12 @@ resume, proxy tunneling and a busload of other useful tricks.
 
 %package -n libcurl
 Summary: A library for getting files from web servers
-Requires: libssh%{?_isa} >= %{libssh_version}
-Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
-Provides: libcurl-full = %{version}-%{release}
-Provides: libcurl-full%{?_isa} = %{version}-%{release}
+Group: Development/Libraries
+Requires: libssh2%{?_isa} >= %{libssh2_version}
+
+# libnsspem.so is no longer included in the nss package (#1347336)
+BuildRequires: nss-pem
+Requires: nss-pem%{?_isa}
 
 %description -n libcurl
 libcurl is a free and easy-to-use client-side URL transfer library, supporting
@@ -133,7 +142,18 @@ resume, http proxy tunneling and more.
 
 %package -n libcurl-devel
 Summary: Files needed for building applications with libcurl
+Group: Development/Libraries
 Requires: libcurl%{?_isa} = %{version}-%{release}
+
+# From Fedora 14, %%{_datadir}/aclocal is included in the filesystem package
+%if 0%{?fedora} < 14
+Requires: %{_datadir}/aclocal
+%endif
+
+# From Fedora 11, RHEL-6, pkgconfig dependency is auto-detected
+%if 0%{?fedora} < 11 && 0%{?rhel} < 6
+Requires: pkgconfig
+%endif
 
 Provides: curl-devel = %{version}-%{release}
 Provides: curl-devel%{?_isa} = %{version}-%{release}
@@ -143,37 +163,6 @@ Obsoletes: curl-devel < %{version}-%{release}
 The libcurl-devel package includes header files and libraries necessary for
 developing programs which use the libcurl library. It contains the API
 documentation of the library, too.
-
-#%package -n curl-minimal
-#Summary: Conservatively configured build of curl for minimal installations
-#Provides: curl = %{version}-%{release}
-#Conflicts: curl
-#RemovePathPostfixes: .minimal
-#
-## using an older version of libcurl could result in CURLE_UNKNOWN_OPTION
-#Requires: libcurl%{?_isa} >= %{version}-%{release}
-#
-#%description -n curl-minimal
-#This is a replacement of the 'curl' package for minimal installations.  It
-#comes with a limited set of features compared to the 'curl' package.  On the
-#other hand, the package is smaller and requires fewer run-time dependencies to
-#be installed.
-#
-#%package -n libcurl-minimal
-#Summary: Conservatively configured build of libcurl for minimal installations
-#Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
-#Provides: libcurl = %{version}-%{release}
-#Provides: libcurl%{?_isa} = %{version}-%{release}
-#Conflicts: libcurl
-#RemovePathPostfixes: .minimal
-## needed for RemovePathPostfixes to work with shared libraries
-#%undefine __brp_ldconfig
-#
-#%description -n libcurl-minimal
-#This is a replacement of the 'libcurl' package for minimal installations.  It
-#comes with a limited set of features compared to the 'libcurl' package.  On the
-#other hand, the package is smaller and requires fewer run-time dependencies to
-#be installed.
 
 %prep
 %setup -q
@@ -187,12 +176,18 @@ documentation of the library, too.
 %patch6 -p1
 %patch7 -p1
 %patch8 -p1
+%patch9 -p1
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
 
 # Fedora patches
 %patch101 -p1
 %patch102 -p1
 %patch104 -p1
-%patch105 -p1
 
 # regenerate Makefile.in files
 aclocal -I m4
@@ -200,60 +195,41 @@ automake
 
 # disable test 1112 (#565305) and test 1801
 # <https://github.com/bagder/curl/commit/21e82bd6#commitcomment-12226582>
-printf "1112\n1801\n" >> tests/data/DISABLED
+# and test 2033, which is a flaky test for HTTP/1 pipelining
+printf "1112\n1801\n2033\n" >> tests/data/DISABLED
 
 # disable test 1319 on ppc64 (server times out)
 %ifarch ppc64
 echo "1319" >> tests/data/DISABLED
 %endif
 
+# temporarily disable failing libidn2 test-cases
+printf "1034\n1035\n2046\n2047\n" >> tests/data/DISABLED
+
 %build
-mkdir build-{full,minimal}
-export common_configure_opts=" \
-    --cache-file=../config.cache \
-    --disable-static \
+[ -x /usr/kerberos/bin/krb5-config ] && KRB5_PREFIX="=/usr/kerberos"
+%configure --disable-static \
     --enable-symbol-hiding \
     --enable-ipv6 \
+    --enable-ldaps \
+    --enable-manual \
     --enable-threaded-resolver \
-    --with-gssapi \
+    --with-gssapi${KRB5_PREFIX} \
+    --with-libidn2 \
+    --with-libmetalink \
+    --with-libpsl \
+    --with-libssh2 \
     --with-nghttp2 \
-    --with-ssl --with-ca-bundle=%{_sysconfdir}/pki/tls/certs/ca-bundle.crt"
+    --without-ssl --with-nss --without-ca-bundle
+#    --enable-debug
+# use ^^^ to turn off optimizations, etc.
 
-%global _configure ../configure
+# Remove bogus rpath
+sed -i \
+    -e 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' \
+    -e 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
 
-# configure minimal build
-(
-    cd build-minimal
-    %configure $common_configure_opts \
-        --disable-ldap \
-        --disable-ldaps \
-        --disable-manual \
-        --without-libidn2 \
-        --without-libmetalink \
-        --without-libpsl \
-        --without-libssh
-)
-
-# configure full build
-(
-    cd build-full
-    %configure $common_configure_opts \
-        --enable-ldap \
-        --enable-ldaps \
-        --enable-manual \
-        --with-libidn2 \
-        --with-libmetalink \
-        --with-libpsl \
-        --with-libssh
-)
-
-# avoid using rpath
-sed -e 's/^runpath_var=.*/runpath_var=/' \
-    -e 's/^hardcode_libdir_flag_spec=".*"$/hardcode_libdir_flag_spec=""/' \
-    -i build-{full,minimal}/libtool
-
-#make %{?_smp_mflags} V=1 -C build-minimal
-make %{?_smp_mflags} V=1 -C build-full
+make %{?_smp_mflags} V=1
 
 %check
 # we have to override LD_LIBRARY_PATH because we eliminated rpath
@@ -261,30 +237,15 @@ LD_LIBRARY_PATH="$RPM_BUILD_ROOT%{_libdir}:$LD_LIBRARY_PATH"
 export LD_LIBRARY_PATH
 
 ## compile upstream test-cases
-#cd build-full/tests
+#cd tests
 #make %{?_smp_mflags} V=1
 #
 ## run the upstream test-suite
-#srcdir=../../tests perl -I../../tests ../../tests/runtests.pl -a -p -v '!flaky'
+#./runtests.pl -a -p -v '!flaky'
 
 %install
-# install and rename the library that will be packaged as libcurl-minimal
-#make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install -C build-minimal/lib
-#rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.{la,so}
-#for i in ${RPM_BUILD_ROOT}%{_libdir}/*; do
-#    mv -v $i $i.minimal
-#done
-#
-## install and rename the executable that will be packaged as curl-minimal
-#make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install -C build-minimal/src
-#mv -v ${RPM_BUILD_ROOT}%{_bindir}/curl{,.minimal}
+rm -rf $RPM_BUILD_ROOT
 
-# install libcurl.m4
-install -d $RPM_BUILD_ROOT%{_datadir}/aclocal
-install -m 644 docs/libcurl/libcurl.m4 $RPM_BUILD_ROOT%{_datadir}/aclocal
-
-# install the executable and library that will be packaged as curl and libcurl
-cd build-full
 make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install
 
 # install zsh completion for curl
@@ -294,9 +255,18 @@ LD_LIBRARY_PATH="$RPM_BUILD_ROOT%{_libdir}:$LD_LIBRARY_PATH" \
 
 rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 
-%ldconfig_scriptlets -n libcurl
+install -d $RPM_BUILD_ROOT%{_datadir}/aclocal
+install -m 644 docs/libcurl/libcurl.m4 $RPM_BUILD_ROOT%{_datadir}/aclocal
 
-# %%ldconfig_scriptlets -n libcurl-minimal
+# Make libcurl-devel multilib-ready (bug #488922)
+%multilib_fix_c_header --file %{_includedir}/curl/curlbuild.h
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%post -n libcurl -p /sbin/ldconfig
+
+%postun -n libcurl -p /sbin/ldconfig
 
 %files
 %doc CHANGES README*
@@ -308,9 +278,9 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_datadir}/zsh/site-functions
 
 %files -n libcurl
+%{!?_licensedir:%global license %%doc}
 %license COPYING
-%{_libdir}/libcurl.so.4
-%{_libdir}/libcurl.so.4.[0-9].[0-9]
+%{_libdir}/libcurl.so.*
 
 %files -n libcurl-devel
 %doc docs/examples/*.c docs/examples/Makefile.example docs/INTERNALS.md
@@ -323,155 +293,40 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_mandir}/man3/*
 %{_datadir}/aclocal/libcurl.m4
 
-#%%files -n curl-minimal
-#%%{_bindir}/curl.minimal
-#%%{_mandir}/man1/curl.1*
-#
-#%%files -n libcurl-minimal
-#%%license COPYING
-#%%{_libdir}/libcurl.so.4.minimal
-#%%{_libdir}/libcurl.so.4.[0-9].[0-9].minimal
-
 %changelog
-* Wed Sep 05 2018 Kamil Dudka <kdudka@redhat.com> - 7.59.0-7
-- fix NTLM password overflow via integer overflow (CVE-2018-14618)
-- tests: make ssh-keygen always produce PEM format (#1622594)
-- scp/sftp: fix infinite connect loop on invalid private key (#1595135)
+* Thu Feb 15 2018 Kamil Dudka <kdudka@redhat.com> - 7.53.1-15
+- make NSS deallocate PKCS #11 objects early enough (#1510247)
 
-* Thu Aug 09 2018 Kamil Dudka <kdudka@redhat.com> - 7.59.0-6
-- ssl: set engine implicitly when a PKCS#11 URI is provided (#1219544)
+* Wed Jan 24 2018 Kamil Dudka <kdudka@redhat.com> - 7.53.1-14
+- http2: fix incorrect trailer buffer size (CVE-2018-1000005)
+- http: prevent custom Authorization headers in redirects (CVE-2018-1000007)
 
-* Wed Jul 11 2018 Kamil Dudka <kdudka@redhat.com> - 7.59.0-5
-- fix heap buffer overflow in SMTP send (CVE-2018-0500)
+* Thu Nov 30 2017 Kamil Dudka <kdudka@redhat.com> - 7.53.1-13
+- fix NTLM buffer overflow via integer overflow (CVE-2017-8816)
+- fix FTP wildcard out of bounds read (CVE-2017-8817)
 
-* Tue Jun 05 2018 Kamil Dudka <kdudka@redhat.com> - 7.59.0-4
-- http2: handle GOAWAY properly (#1585797)
+* Mon Oct 23 2017 Kamil Dudka <kdudka@redhat.com> - 7.53.1-12
+- fix buffer overflow while processing IMAP FETCH response (CVE-2017-1000257)
 
-* Fri May 18 2018 Kamil Dudka <kdudka@redhat.com> - 7.59.0-3
-- fix FTP shutdown response buffer overflow (CVE-2018-1000300)
-- fix RTSP bad headers buffer over-read (CVE-2018-1000301)
+* Wed Oct 04 2017 Kamil Dudka <kdudka@redhat.com> 7.53.1-11
+- fix out of bounds read in FTP PWD response parser (CVE-2017-1000254)
 
-* Wed Mar 14 2018 Kamil Dudka <kdudka@redhat.com> - 7.59.0-2
-- ftp: fix typo in recursive callback detection for seeking
+* Wed Aug 09 2017 Kamil Dudka <kdudka@redhat.com> 7.53.1-10
+- tftp: reject file name lengths that do not fit buffer (CVE-2017-1000100)
+- do not continue parsing of glob after range overflow (CVE-2017-1000101)
 
-* Wed Mar 14 2018 Kamil Dudka <kdudka@redhat.com> - 7.59.0-1
-- new upstream release, which fixes the following vulnerabilities
-    CVE-2018-1000120 - FTP path trickery leads to NIL byte out of bounds write
-    CVE-2018-1000121 - LDAP NULL pointer dereference
-    CVE-2018-1000122 - RTSP RTP buffer over-read
+* Mon Jul 31 2017 Kamil Dudka <kdudka@redhat.com> 7.53.1-9
+- ignore Content-Length/Transfer-Encoding headers in CONNECT response (#1476427)
 
-* Mon Mar 12 2018 Kamil Dudka <kdudka@redhat.com> - 7.58.0-8
-- http2: mark the connection for close on GOAWAY
+* Thu Jul 20 2017 Kamil Dudka <kdudka@redhat.com> 7.53.1-8
+- nss: fix a possible use-after-free in SelectClientCert() (#1436158)
 
-* Mon Feb 19 2018 Paul Howarth <paul@city-fan.org> - 7.58.0-7
-- Add explicity-used build requirements
-- Fix libcurl soname version number in %%files list to avoid accidental soname
-  bumps
-
-* Thu Feb 15 2018 Paul Howarth <paul@city-fan.org> - 7.58.0-6
-- switch to %%ldconfig_scriptlets
-- drop legacy BuildRoot: and Group: tags
-- enforce versioned libssh dependency for libcurl
-
-* Tue Feb 13 2018 Kamil Dudka <kdudka@redhat.com> - 7.58.0-5
-- drop temporary workaround for #1540549
-
-* Wed Feb 07 2018 Fedora Release Engineering <releng@fedoraproject.org> - 7.58.0-4
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
-
-* Wed Jan 31 2018 Kamil Dudka <kdudka@redhat.com> - 7.58.0-3
-- temporarily work around internal compiler error on x86_64 (#1540549)
-- disable brp-ldconfig to make RemovePathPostfixes work with shared libs again
-
-* Wed Jan 24 2018 Andreas Schneider <asn@redhat.com> - 7.58.0-2
-- use libssh (instead of libssh2) to implement SCP/SFTP in libcurl (#1531483)
-
-* Wed Jan 24 2018 Kamil Dudka <kdudka@redhat.com> - 7.58.0-1
-- new upstream release, which fixes the following vulnerabilities
-    CVE-2018-1000005 - curl: HTTP/2 trailer out-of-bounds read
-    CVE-2018-1000007 - curl: HTTP authentication leak in redirects
-
-* Wed Nov 29 2017 Kamil Dudka <kdudka@redhat.com> - 7.57.0-1
-- new upstream release, which fixes the following vulnerabilities
-    CVE-2017-8816 - curl: NTLM buffer overflow via integer overflow
-    CVE-2017-8817 - curl: FTP wildcard out of bounds read
-    CVE-2017-8818 - curl: SSL out of buffer access
-
-* Mon Oct 23 2017 Kamil Dudka <kdudka@redhat.com> - 7.56.1-1
-- new upstream release (fixes CVE-2017-1000257)
-
-* Wed Oct 04 2017 Kamil Dudka <kdudka@redhat.com> - 7.56.0-1
-- new upstream release (fixes CVE-2017-1000254)
-
-* Mon Aug 28 2017 Kamil Dudka <kdudka@redhat.com> - 7.55.1-5
-- apply the patch for the previous commit and fix its name (#1485702)
-
-* Mon Aug 28 2017 Bastien Nocera <bnocera@redhat.com> - 7.55.1-4
-- Fix NetworkManager connectivity check not working (#1485702)
-
-* Tue Aug 22 2017 Kamil Dudka <kdudka@redhat.com> 7.55.1-3
-- utilize system wide crypto policies for TLS (#1483972)
-
-* Tue Aug 15 2017 Kamil Dudka <kdudka@redhat.com> 7.55.1-2
-- make zsh completion work again
-
-* Mon Aug 14 2017 Kamil Dudka <kdudka@redhat.com> 7.55.1-1
-- new upstream release
-
-* Wed Aug 09 2017 Kamil Dudka <kdudka@redhat.com> 7.55.0-1
-- drop multilib fix for libcurl header files no longer needed
-- new upstream release, which fixes the following vulnerabilities
-    CVE-2017-1000099 - FILE buffer read out of bounds
-    CVE-2017-1000100 - TFTP sends more than buffer size
-    CVE-2017-1000101 - URL globbing out of bounds read
-
-* Wed Aug 02 2017 Fedora Release Engineering <releng@fedoraproject.org> - 7.54.1-8
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Binutils_Mass_Rebuild
-
-* Fri Jul 28 2017 Florian Weimer <fweimer@redhat.com> - 7.54.1-7
-- Rebuild with fixed binutils (#1475636)
-
-* Fri Jul 28 2017 Igor Gnatenko <ignatenkobrain@fedoraproject.org> - 7.54.1-6
-- Enable separate debuginfo back
-
-* Thu Jul 27 2017 Kamil Dudka <kdudka@redhat.com> 7.54.1-5
-- rebuild to fix broken linkage of cmake on ppc64le
-
-* Wed Jul 26 2017 Kamil Dudka <kdudka@redhat.com> 7.54.1-4
-- avoid build failure caused broken RPM code that produces debuginfo packages
-
-* Wed Jul 26 2017 Fedora Release Engineering <releng@fedoraproject.org> - 7.54.1-3
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
-
-* Mon Jun 19 2017 Kamil Dudka <kdudka@redhat.com> 7.54.1-2
-- enforce versioned openssl-libs dependency for libcurl (#1462184)
-
-* Wed Jun 14 2017 Kamil Dudka <kdudka@redhat.com> 7.54.1-1
-- new upstream release
-
-* Tue May 16 2017 Kamil Dudka <kdudka@redhat.com> 7.54.0-5
-- add *-full provides for curl and libcurl to make them explicitly installable
-
-* Thu May 04 2017 Kamil Dudka <kdudka@redhat.com> 7.54.0-4
-- make curl-minimal require a new enough version of libcurl
-
-* Thu Apr 27 2017 Kamil Dudka <kdudka@redhat.com> 7.54.0-3
-- switch the TLS backend back to OpenSSL (#1445153)
-
-* Tue Apr 25 2017 Kamil Dudka <kdudka@redhat.com> 7.54.0-2
+* Wed Apr 26 2017 Kamil Dudka <kdudka@redhat.com> 7.53.1-7
 - nss: use libnssckbi.so as the default source of trust
 - nss: do not leak PKCS #11 slot while loading a key (#1444860)
 
-* Thu Apr 20 2017 Kamil Dudka <kdudka@redhat.com> 7.54.0-1
-- new upstream release (fixes CVE-2017-7468)
-
-* Thu Apr 13 2017 Paul Howarth <paul@city-fan.org> 7.53.1-7
-- add %%post and %%postun scriptlets for libcurl-minimal
-- libcurl-minimal provides both libcurl and libcurl%%{?_isa}
-- remove some legacy spec file cruft
-
-* Wed Apr 12 2017 Kamil Dudka <kdudka@redhat.com> 7.53.1-6
-- provide (lib)curl-minimal subpackages with lightweight build of (lib)curl
+* Thu Apr 20 2017 Kamil Dudka <kdudka@redhat.com> 7.53.1-6
+- fix switching off SSL session id when client cert is used (CVE-2017-7468)
 
 * Mon Apr 10 2017 Kamil Dudka <kdudka@redhat.com> 7.53.1-5
 - disable upstream test 2033 (flaky test for HTTP/1 pipelining)
