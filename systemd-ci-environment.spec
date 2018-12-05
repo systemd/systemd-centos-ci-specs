@@ -1,6 +1,6 @@
 Name:      systemd-ci-environment
 Version:   0
-Release:   3%{?dist}
+Release:   4%{?dist}
 Summary:   Metapackage for systemd CI
 
 Group:     Development/System
@@ -40,14 +40,14 @@ Requires:  automake
 Requires:  autoconf
 Requires:  libtool
 Requires:  git
+Requires:  lz4-devel
+Requires:  libxkbcommon-devel
 
 #FIXME
 #not present on centos
 #Requires:  python3-devel
 #Requires:  python3-lxml
 #Requires:  firewalld-filesystem
-#Requires:  lz4-devel
-#Requires:  libxkbcommon-devel
 
 %description
 Metapackage with dependencies needed
@@ -56,6 +56,9 @@ for building upstream systemd on top of el7.
 %files
 
 %changelog
+* Wed Dec 05 2018 Frantisek Sumsal <fsumsal@redhat.com> - 0-4
+- add lz4-devel and libxkbcommon-devel packages
+
 * Tue Oct 16 2018 Frantisek Sumsal <fsumsal@redhat.com> - 0-3
 - bump util-linux version
 
